@@ -12,6 +12,16 @@ a user needs to set lives in the `REQUIRED INPUTS` block at the top of
 
 ## Checklist
 
+### 0. Confirm nextflow is available
+
+```bash
+nextflow -version
+```
+
+If that fails, the user is not on a Carolina Cloud head container. Install with
+`curl -s https://get.nextflow.io | bash` (needs Java 17+) and ensure it is on
+PATH before continuing.
+
 ### 1. Confirm credentials are present
 
 ```bash
@@ -90,7 +100,7 @@ contact Carolina Cloud if they need that.
 ### 5. Smoke test — do not skip
 
 ```bash
-./nextflow run smoke.nf -c nextflow.config
+nextflow run smoke.nf -c nextflow.config
 ```
 
 Expect `ALL CHECKS PASSED`. This takes under a minute and catches credential,
@@ -100,7 +110,7 @@ run. If it fails, fix it before going further and do not proceed.
 ### 6. Run
 
 ```bash
-./nextflow run main.nf -c nextflow.config
+nextflow run main.nf -c nextflow.config
 ```
 
 Hours for a WGS sample, mostly in alignment. The `nextflow` process must stay

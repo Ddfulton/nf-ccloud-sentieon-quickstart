@@ -15,6 +15,10 @@ A 30× whole genome takes a few hours, most of it in alignment.
 
 **You edit two lines and one CSV.** Everything else is already configured.
 
+Requires `nextflow` on your PATH. A Carolina Cloud head container already has
+it; otherwise `curl -s https://get.nextflow.io | bash` and put it on your PATH
+(needs Java 17+).
+
 ### With an AI agent
 
 This repo contains a `CLAUDE.md` with step-by-step instructions. Clone it, open
@@ -55,8 +59,8 @@ read-group ID and defaults to `sample`.
 ## Run
 
 ```bash
-./nextflow run smoke.nf -c nextflow.config    # preflight, under a minute
-./nextflow run main.nf  -c nextflow.config    # the real thing
+nextflow run smoke.nf -c nextflow.config    # preflight, under a minute
+nextflow run main.nf  -c nextflow.config    # the real thing
 ```
 
 Run the smoke test first. It confirms your credentials, the executor, and the
