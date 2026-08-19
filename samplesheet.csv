@@ -1,0 +1,2 @@
+sample,group,fastq_1,fastq_2
+Horse1,SRR6474875,s3://CHANGE-ME/sample/SRR6474875_1.fastq.gz,s3://CHANGE-ME/sample/SRR6474875_2.fastq.gz
