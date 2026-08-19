@@ -41,7 +41,7 @@ Edit **two lines** in the `REQUIRED INPUTS` block of `nextflow.config`:
 
 ```groovy
 params.bucket = 's3://CHANGE-ME'
-params.fasta  = 's3://CHANGE-ME/ref/GCF_041296265.1_TB-T2T_genomic.fna'
+params.fasta  = 's3://CHANGE-ME/ref/your-reference.fna'
 ```
 
 `params.bucket` must be a bucket the user can **write** to — scratch space and
@@ -62,8 +62,8 @@ aws s3 ls s3://their-bucket/ ${AWS_ENDPOINT_URL:+--endpoint-url $AWS_ENDPOINT_UR
 The pipeline needs the FASTA **and** its BWA index in the same prefix:
 
 ```
-GCF_041296265.1_TB-T2T_genomic.fna
-GCF_041296265.1_TB-T2T_genomic.fna.{amb,ann,bwt,pac,sa,fai}
+your-reference.fna
+your-reference.fna.{amb,ann,bwt,pac,sa,fai}
 ```
 
 ```bash
@@ -75,9 +75,8 @@ job needing ~8 GB RAM and a couple of hours, and it does **not** run on Carolina
 Cloud. See README.md step 3. Do not try to work around a missing index; the
 pipeline will refuse to start and it is right to.
 
-The filenames above are from the reference this was tested with. The user's
-may differ — only the layout matters: the FASTA plus its index files sharing one
-stem in one prefix.
+Filenames are illustrative. Only the layout matters: the FASTA plus its index
+files sharing one stem in one prefix.
 
 ### 4. Fill in the samplesheet
 
@@ -85,7 +84,7 @@ Edit `samplesheet.csv`. One row per sample:
 
 ```csv
 sample,group,fastq_1,fastq_2
-Horse1,SRR6474875,s3://their-bucket/sample/SRR6474875_1.fastq.gz,s3://their-bucket/sample/SRR6474875_2.fastq.gz
+SAMPLE1,RG1,s3://their-bucket/fastq/SAMPLE1_R1.fastq.gz,s3://their-bucket/fastq/SAMPLE1_R2.fastq.gz
 ```
 
 - `sample` must be **unique per row** — it names every output file. The pipeline

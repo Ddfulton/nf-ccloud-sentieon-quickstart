@@ -1,60 +1,57 @@
-# Horse WGS — Sentieon DNAscope germline variant calling
+# Sentieon DNAscope on Carolina Cloud
 
-FASTQ in, VCF out, running on Carolina Cloud. Nothing heavier than Java runs on
-your own machine.
+Germline variant calling: paired FASTQ in, VCF out. Runs on Carolina Cloud —
+nothing heavy runs on your own machine.
 
 ```
 FASTQ pair ──▶ align ──▶ QC metrics ──▶ dedup ──▶ DNAscope ──▶ DNAModelApply ──▶ VCF
 ```
 
-A 30× whole genome takes a few hours, most of it in alignment.
+## 🤖 Quick start with an AI agent
+
+Using Claude Code, or any coding agent? Paste this and it will take it from here:
+
+```text
+Please clone https://github.com/Ddfulton/nf-ccloud-sentieon-quickstart and help me get started.
+Also read https://console.carolinacloud.io/static/nextflow/local-quickstart.md for more context on nf-ccloud
+```
+
+The repo contains a `CLAUDE.md` that walks the agent through setup, tells it
+what to ask you for, and makes it run the preflight check before anything
+expensive. Everything below is the same process done by hand.
 
 ---
 
+## What you need
+
+| | |
+|---|---|
+| `nextflow` on your PATH | Already installed on a Carolina Cloud head container. Otherwise `curl -s https://get.nextflow.io \| bash` (needs Java 17+). |
+| A writable bucket | Scratch and results go here. Budget several hundred GB for WGS. |
+| A reference genome **with its BWA index** | See [Preparing the reference](#preparing-the-reference). This is the only part that takes real work. |
+| Your FASTQs in object storage | Readable `s3://` URIs. |
+
+Sentieon itself, the DNAscope model, and the license all ship inside the
+container image. There is nothing to install and no license to obtain.
+
 ## Setup
 
-**You edit two lines and one CSV.** Everything else is already configured.
-
-Requires `nextflow` on your PATH. A Carolina Cloud head container already has
-it; otherwise `curl -s https://get.nextflow.io | bash` and put it on your PATH
-(needs Java 17+).
-
-### With an AI agent
-
-This repo contains a `CLAUDE.md` with step-by-step instructions. Clone it, open
-it with Claude Code (or any agent that reads `CLAUDE.md`), and say *"set this up
-and run it."* It will ask you for your bucket, check your reference, and run the
-preflight test before starting anything expensive.
-
-### By hand
-
-**1. Credentials.** On a Carolina Cloud head container these are already set —
-skip this. Otherwise export `CCLOUD_API_KEY`, `AWS_ACCESS_KEY_ID`,
-`AWS_SECRET_ACCESS_KEY`, and for S3-compatible storage (e.g. Cloudflare R2)
-`AWS_REGION` and `AWS_ENDPOINT_URL`.
-
-**2. Your bucket and reference.** Two lines, at the top of `nextflow.config`:
+**1. Edit two lines** in `nextflow.config`:
 
 ```groovy
-params.bucket = 's3://CHANGE-ME'                       // ← must be WRITABLE
-params.fasta  = 's3://CHANGE-ME/ref/your-reference.fna' // ← your genome
+params.bucket = 's3://CHANGE-ME'                        // must be WRITABLE
+params.fasta  = 's3://CHANGE-ME/ref/your-reference.fna'  // your genome
 ```
 
-Any reference works. The default names the thoroughbred T2T assembly
-(`GCF_041296265.1`) simply because that is what this was tested against —
-replace it with yours, wherever it lives.
-
-**3. Your samples.** Edit `samplesheet.csv`:
+**2. Edit `samplesheet.csv`**, one row per sample:
 
 ```csv
 sample,group,fastq_1,fastq_2
-Horse1,SRR6474875,s3://your-bucket/sample/SRR6474875_1.fastq.gz,s3://your-bucket/sample/SRR6474875_2.fastq.gz
+SAMPLE1,RG1,s3://your-bucket/fastq/SAMPLE1_R1.fastq.gz,s3://your-bucket/fastq/SAMPLE1_R2.fastq.gz
 ```
 
 `sample` must be unique per row — it names every output file. `group` is the
 read-group ID and defaults to `sample`.
-
----
 
 ## Run
 
@@ -63,11 +60,10 @@ nextflow run smoke.nf -c nextflow.config    # preflight, under a minute
 nextflow run main.nf  -c nextflow.config    # the real thing
 ```
 
-Run the smoke test first. It confirms your credentials, the executor, and the
-container in well under a minute — catching problems that would otherwise
-surface hours into a real run.
-
-`-resume` on any re-run reuses completed work instead of starting over.
+Run the preflight first. It checks your credentials, the executor, your
+reference index, and the container in well under a minute — catching problems
+that would otherwise surface hours into a real run. Add `-resume` to any re-run
+to reuse completed work.
 
 Results land in `results/<sample>/`:
 
@@ -77,86 +73,60 @@ Results land in `results/<sample>/`:
 metrics/                 QC text files and PDF plots
 ```
 
-Start with the PDFs and `aln_metrics.txt` before trusting the VCF.
+Check the PDFs and `aln_metrics.txt` before trusting the VCF.
 
----
+## Preparing the reference
 
-## Preparing the reference genome
-
-**This is the only part that takes real work, and it is a one-time cost.**
-
-The pipeline needs the FASTA *and* its BWA index in one prefix. NCBI ships only
-the bare sequence:
+**A FASTA on its own is not enough.** This pipeline does not build the index for
+you. All seven files must sit in the same bucket prefix:
 
 ```
-GCF_041296265.1_TB-T2T_genomic.fna
-GCF_041296265.1_TB-T2T_genomic.fna.{amb,ann,bwt,pac,sa}    BWA index
-GCF_041296265.1_TB-T2T_genomic.fna.fai                      samtools index
+your-reference.fna         your-reference.fna.pac
+your-reference.fna.amb     your-reference.fna.sa
+your-reference.fna.ann     your-reference.fna.fai
+your-reference.fna.bwt
 ```
 
-The pipeline checks for these before starting and names anything missing.
-
-**Download** the thoroughbred T2T assembly:
+Build the index once, on a Linux box with ~8 GB RAM. `bwa index` is
+single-threaded and takes a couple of hours for a mammalian genome:
 
 ```bash
-datasets download genome accession GCF_041296265.1 --include genome
-unzip ncbi_dataset.zip
-```
-
-**Index it** on a Linux box with ~8 GB RAM and a couple of hours. `bwa index` is
-single-threaded and slow; this does not run on Carolina Cloud:
-
-```bash
-bwa index GCF_041296265.1_TB-T2T_genomic.fna
-samtools faidx GCF_041296265.1_TB-T2T_genomic.fna
+bwa index your-reference.fna
+samtools faidx your-reference.fna
 ```
 
 No local toolchain? Use a container:
 
 ```bash
 docker run --rm -v "$PWD":/data -w /data biocontainers/bwa:v0.7.17_cv1 \
-    bwa index GCF_041296265.1_TB-T2T_genomic.fna
+    bwa index your-reference.fna
 ```
 
-**Upload** the whole set to `s3://your-bucket/ref/`:
+Then upload the whole set:
 
 ```bash
 aws s3 cp . s3://your-bucket/ref/ --recursive \
-    --exclude "*" --include "GCF_041296265.1_TB-T2T_genomic*"
+    --exclude "*" --include "your-reference.fna*"
 ```
 
-> Keep that prefix clean. The pipeline stages every object sharing the FASTA
-> stem into each task, so a leftover `.fna.gz` costs a pointless multi-GB
-> transfer per task.
-
-Any reference works — the commands above just use the assembly we tested with.
-Keep the filename stem consistent across the FASTA and its index files, and
-point `params.fasta` at wherever you put it.
-
----
+> Keep that prefix clean. Every object sharing the FASTA stem is staged into
+> each task, so a stray `.fna.gz` costs a pointless multi-GB transfer per task.
 
 ## Troubleshooting
-
-`CLAUDE.md` has the full table. The common ones:
 
 | Message | Fix |
 |---|---|
 | `Cannot create work-dir 's3://CHANGE-ME/…'` | Set `params.bucket`. |
 | `Reference is missing BWA index files` | Build the index — see above. |
 | `Duplicate sample id(s)` | Make each `sample` value unique. |
-| `Unable to get file attributes` (DEBUG) | Harmless storage quirk; ignore. |
-| Anything about a Sentieon license | Should not happen — it ships in the image. Contact us. |
+| `NoSuchFileException: s3://…` | Wrong path, or your credentials can't see that bucket. |
+| Anything about a Sentieon license | Shouldn't happen — it ships in the image. Contact us. |
 
-The full log is `.nextflow.log`; send it to us rather than a screenshot.
+Full log is `.nextflow.log`; send that rather than a screenshot.
 
-**Long runs:** `nextflow run` must stay alive. Use `tmux` if there is any chance
-of disconnection.
+## Files
 
----
-
-## What's here
-
-| File | |
+| | |
 |---|---|
 | `nextflow.config` | **The only file you edit.** Inputs at the top. |
 | `samplesheet.csv` | Your samples. |
