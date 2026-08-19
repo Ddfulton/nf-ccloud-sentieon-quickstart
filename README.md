@@ -65,7 +65,7 @@ reference index, and the container in well under a minute — catching problems
 that would otherwise surface hours into a real run. Add `-resume` to any re-run
 to reuse completed work.
 
-Results land in `results/<sample>/`:
+Results land in `<your-bucket>/results/<sample>/`:
 
 ```
 <sample>.vcf.gz          the variant calls

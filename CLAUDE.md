@@ -116,7 +116,7 @@ Hours for a WGS sample, mostly in alignment. The `nextflow` process must stay
 alive — use `tmux` if there is any chance of disconnection. Add `-resume` to
 any re-run to reuse completed work.
 
-Results land in `results/<sample>/`:
+Results land in `<your-bucket>/results/<sample>/`:
 - `<sample>.vcf.gz` — the variant calls
 - `metrics/` — QC text files and PDF plots
 
